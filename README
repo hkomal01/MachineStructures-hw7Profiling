@@ -1,0 +1,214 @@
+COMP40 HW6 
+A UNIVERSAL VIRTUAL MACHINE (um) 
+by Harsh Komal (hkomal01) and Nicole Tong (ntong01)
+4/14/2022
+
+_______________________________________________________________________________
+
+Thank you to the TAs who helped us throughout this assignment.
+
+_______________________________________________________________________________
+
+The assignment and all features of the um have been implemented to the best of
+our abilities.
+
+_______________________________________________________________________________
+
+Design Changes:
+
+- The I/O module no longer directly reads and then passes the bitpacked 
+  instructions to the unpack module. Rather, instructions are first stored in
+  the segments module before being unpacked.
+
+- The Addresses module is no longer represented by a Hanson Sequence, but
+  rather by a Hanson Stack, as it is unnecessary to ask for an address at a
+  specific index. We only need to be able to get an unused identifier if one
+  exists.
+
+- The Addresses module is used to store identifiers, not memory addresses.
+
+- The addition instruction no longer mods the sum by 2^32. Doing so
+  unintentionally reduces the range of possible sums by 1, and is unnecessary
+  due to integer overflow.
+
+- The multiplication instruction no longer mods the product by 2^32. Doing so
+  unintentionally reduces the range of possible products by 1, and is
+  unnecessary due to integer overflow.
+
+- Load program is now stored in the Instructions (Arithmetic and Data) module,
+  rather than in its own module.
+
+- Halt no longer "resets" computation, but rather stops it entirely.
+
+_______________________________________________________________________________
+
+Modules:
+
+Addresses
+    Addresses is implemented with a Hanson Stack to represent a data structure
+    that outputs the last value that was inputted. It knows whether or not
+    there are available IDs to reuse, and what the next possible ID is.
+
+Bookend
+    Bookend is a wrapper for the um's "constructor" and "deconstructor," which
+    allocate and free memory, as well as instantiate the um's initial
+    0-segment. It also holds the halt instruction, which is simply the
+    deconstructor with an additional command that halts execution. It interacts
+    with the Addresses, Registers, Segments, and Unpack modules.
+
+Bounds Check
+    Bounds Check is a wrapper for a simple bounds checking function, which
+    simply checks whether or not a given integer can be represented by the
+    given number of bits. It interacts with the provided Bitpacking module.
+
+Handle
+    Handle is a set of two functions which handle passing the given parameters
+    to each of the 14 um instructions. It is split up into a general
+    instructions function and a loadvalue function. The general instructions
+    function uses a switch statement and identifies instructions by their
+    opcode. It interacts with the various instructions modules.
+
+Instructions (Arithmetic and Data)
+    Instructions (Arithmetic and Data) is a wrapper for the arithmetic
+    instructions and data instructions, or addition, multiplication, division,
+    conditional move, and load value. It interacts with the Bounds Check and
+    Registers modules.
+
+Instructions (I/O)
+    Instructions (Arithmetic and Data) is a wrapper for the I/O instructions,
+    or input and output. It interacts with the Bounds Check, I/O, and Registers
+    modules.
+
+Instructions (Logical)
+    Instructions (Logical) is a wrapper for the logical instruction, or bitwise
+    NAND. It interacts with the Registers modules.
+
+Instructions (Memory)
+    Instructions (Logical) is a wrapper for the memory instructions, or map
+    segment, unmap segment, segmented load, segmented store, and load program.
+    It interacts with the Registers, Segments, and Unpack modules.
+
+All of the instructions modules are essentially used to pass parameters from
+the Handle module to the Registers and Segments modules. While these modules
+interact with many other modules, they do not care about the values each of the
+other modules hold.
+
+I/O
+    I/O is a wrapper for various input/output functions, or open file, close
+    file, read line, read char, and write char.
+
+Main
+    The main module uses the I/O and Bookend modules to start and end the UM
+    gracefully, and the Unpack module to execute the UM.
+
+Registers
+    Registers is implemented with a C Array of 32-bit words, or uint32_t
+    values. This module holds the values kept in the registers and interacts
+    with the Bounds Check module.
+
+Segments
+    Segments is implemented with a one-dimensional Hanson Sequence. Each index
+    number in the Sequence corresponds with an address. The segments themselves
+    are malloc'd space for uint32_t values. The word length of the segments is
+    held in another one-dimensional Hanson Sequence with corresponding indices.
+    When segments are unmapped, they are free'd and set to NULL. The 0-segment
+    is instantiated dissimilarly from other segments by the "constructor" in
+    the Bookend module. The Segments module holds the values kept in the
+    segments and the segments themselves. It interacts with the I/O module to
+    populate the 0-segment.
+
+Unpack
+    Unpack unpacks and executes the instructions held in the 0-segment, passing
+    them to the Handle module. It holds the program counter. It interacts with
+    the Handle and Segments modules, and the provided Bitpacking module.
+
+_______________________________________________________________________________
+
+time ./um sandmark.umz
+2,000,000,000+ instructions
+      ~ 185.3  seconds
+
+time ./um midmark.umz
+   80,000,000+ instructions
+      ~   7.2  seconds
+
+   50,000,000  instructions
+      ~   4.5  seconds (estimate)
+
+Executing a single instruction seems to take an average of 0.00000009 seconds.
+
+_______________________________________________________________________________
+
+UMTESTS
+
+add.um
+  Instructions tested: add, halt, loadval, output
+    Adds together several values and outputs them as visible ASCII characters.
+
+arith.um
+  Instructions tested: add, divide, halt, loadval, multiply
+    Adds, multiplies, and divides several values, and outputs them as visible
+    ASCII characters. Tests integer overflow.
+
+cmove.um
+  Instructions tested: add, cmove, halt, loadval, output
+    Adds values together and tests whether or not cmove assigns a value to a
+    register when the checked boolean is true or false. Outputs the boolean
+    value.
+
+divide.um
+  Instructions tested: add, halt, loadval, output
+    Adds together several values and outputs them as visible ASCII characters.
+
+input.um
+  Instructions tested: input, loadval, output, halt
+    Tests input and outputs the characters inputted, along with a newline.
+
+loadprogram.um
+  Instructions tested: add, cmove, halt, loadprogram, loadval, multiply, output
+    Tests cmove and loadprogram by looping through a segment of the .um file
+    twice, outputting '0' both times.
+
+map.um
+  Instructions tested: halt, loadval, map
+    Maps 1000 segments, all of different sizes.
+
+map-unmap.um
+  Instructions tested: halt, loadval, map, unmap
+    Maps 1000 segments, all of different sizes, then unmaps them.
+
+multiply.um
+  Instructions tested: halt, loadval, multiply
+    Multiplies two values together and outputs the product as a visible ASCII
+    character.
+
+nand.um
+  Instructions tested: halt, loadval, nand, output
+    Nands a value with itself, twice, and outputs the result.
+
+segment-store-load.um
+  Instructions tested: halt, loadval, map, output, sload, sstore
+    Stores several incrementing values in different indices of the same
+    segment, and outputs them as visible ASCII characters.
+
+sload.um
+  Instructions tested: halt, loadval, map, sload
+    Stores the values of each word in a segment (initialized as 0) in a
+    register.
+
+sstore.um
+  Instructions tested: halt, loadval, map, sstore
+    Stores a value in each word in a segment.
+
+unmap.um
+  Instructions tested: halt, loadval, map, unmap
+    Maps 1000 segments, all of different sizes, then unmaps them in reverse
+    order.
+
+_______________________________________________________________________________
+
+Time spent (approximate):
+
+5 hours analyzing the assignment
+5 hours preparing our design
+11 hours solving problems after our analysis
